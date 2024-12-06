@@ -1,6 +1,8 @@
-#include "comparison.h"
+
 #include "../s21_decimal.h"
-COMPARISON_STATUS s21_is_equal(s21_decimal decimal1, s21_decimal decimal2)
+#define COMPARISON_FALSE 0
+#define COMPARISON_TRUE 1
+int s21_is_equal(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;
 	if (get_sign_number(decimal1) == get_sign_number(decimal2))
@@ -15,7 +17,7 @@ COMPARISON_STATUS s21_is_equal(s21_decimal decimal1, s21_decimal decimal2)
 	}
 	return res;
 }
-COMPARISON_STATUS s21_is_not_equal(s21_decimal decimal1, s21_decimal decimal2)
+int s21_is_not_equal(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res;
 	if (s21_is_equal(decimal1, decimal2))
@@ -29,7 +31,7 @@ COMPARISON_STATUS s21_is_not_equal(s21_decimal decimal1, s21_decimal decimal2)
 	return res;
 }
 
-COMPARISON_STATUS s21_is_greater(s21_decimal decimal1, s21_decimal decimal2)
+int s21_is_greater(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;
 
@@ -64,11 +66,8 @@ COMPARISON_STATUS s21_is_greater(s21_decimal decimal1, s21_decimal decimal2)
 	}
 	return res;
 }
-int s21_sign_get(s21_decimal decimal1, int index, int numBits)
-{
-	return (decimal1.bits[numBits] >> index) & 1;
-}
-COMPARISON_STATUS s21_is_greater_or_equal(s21_decimal decimal1, s21_decimal decimal2)
+
+int s21_is_greater_or_equal(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;
 	if (s21_is_equal(decimal1, decimal2) || s21_is_greater(decimal1, decimal2))
@@ -77,7 +76,7 @@ COMPARISON_STATUS s21_is_greater_or_equal(s21_decimal decimal1, s21_decimal deci
 	}
 	return res;
 }
-COMPARISON_STATUS s21_is_less(s21_decimal decimal1, s21_decimal decimal2)
+int s21_is_less(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;
 	if (!s21_is_greater_or_equal(decimal1, decimal2))
@@ -86,7 +85,7 @@ COMPARISON_STATUS s21_is_less(s21_decimal decimal1, s21_decimal decimal2)
 	}
 	return res;
 }
-COMPARISON_STATUS s21_is_less_or_equal(s21_decimal decimal1, s21_decimal decimal2)
+int s21_is_less_or_equal(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;
 	if (!s21_is_greater(decimal1, decimal2))
