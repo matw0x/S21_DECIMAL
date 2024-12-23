@@ -28,3 +28,14 @@ int s21_sign_get(s21_decimal decimal1, int index, int numBits)
 {
 	return (decimal1.bits[numBits] >> index) & 1;
 }
+void s21_set_bit(s21_decimal *decimal, int bit, int pos, int value)
+{
+	if (value)
+	{
+		decimal->bits[bit] |= (1 << pos); // Устанавливаем бит в 1
+	}
+	else
+	{
+		decimal->bits[bit] &= ~(1 << pos); // Устанавливаем бит в 0
+	}
+}

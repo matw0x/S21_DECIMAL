@@ -37,11 +37,11 @@ int s21_is_greater(s21_decimal decimal1, s21_decimal decimal2)
 
 	if (get_sign_number(decimal1) < get_sign_number(decimal2))
 	{
-		res = COMPARISON_TRUE; // Положительное больше отрицательного
+		res = COMPARISON_TRUE;
 	}
 	else if (get_sign_number(decimal1) > get_sign_number(decimal2))
 	{
-		res = COMPARISON_FALSE; // Отрицательное меньше положительного
+		res = COMPARISON_FALSE;
 	}
 	else if (get_bits_16_23(decimal1) != get_bits_16_23(decimal2))
 	{
@@ -55,12 +55,12 @@ int s21_is_greater(s21_decimal decimal1, s21_decimal decimal2)
 			if (decimal1.bits[i] > decimal2.bits[i])
 			{
 				res = COMPARISON_TRUE;
-				flag = COMPARISON_FALSE; // Прерываем цикл, так как результат уже определён
+				flag = COMPARISON_FALSE;
 			}
 			else if (decimal1.bits[i] < decimal2.bits[i])
 			{
 				res = COMPARISON_FALSE;
-				flag = COMPARISON_FALSE; // Прерываем цикл, так как результат уже определён
+				flag = COMPARISON_FALSE;
 			}
 		}
 	}
