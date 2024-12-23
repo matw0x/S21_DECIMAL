@@ -28,14 +28,58 @@ int s21_sign_get(s21_decimal decimal1, int index, int numBits)
 {
 	return (decimal1.bits[numBits] >> index) & 1;
 }
+void s21_normalization(s21_decimal *value1, s21_decimal *value2)
+{
+
+	int pow_value_1 = is_bits_24_30(*value1);
+	int pow_value_2 = is_bits_24_30(*value2);
+
+	while (pow_value_1 < pow_value_2)
+	{
+		if (multiply_by_10(value1) == ARITHMETIC_OVERFLOW)
+			break; // Проверка переполнения
+		pow_value_1++;
+	}
+	while (pow_value_2 < pow_value_1)
+	{
+		if (multiply_by_10(value2) == ARITHMETIC_OVERFLOW)
+			break; // Проверка переполнения
+		pow_value_2++;
+	}
+}
+int multiply_by_10(s21_decimal *decimal)
+{
+	s21_decimal temp = *decimal;
+	int status = ARITHMETIC_OK;
+	int flag = 0;
+	for (int i = 0; i < 3 && status != ARITHMETIC_OVERFLOW; i++)
+	{
+		for (int j = 0; j < 32 && status != ARITHMETIC_OVERFLOW; j++)
+		{
+			int bit = (temp.bits[i] >> j) & 1;
+			if (bit)
+			{
+				status = s21_add(*decimal, temp, decimal);
+				if (status == ARITHMETIC_OVERFLOW)
+				{
+					status = ARITHMETIC_OVERFLOW;
+				}
+			}
+		}
+	}
+	return status;
+}
 void s21_set_bit(s21_decimal *decimal, int bit, int pos, int value)
 {
+	if (!decimal || bit < 0 || bit >= 3 || pos < 0 || pos >= 32)
+		return; // Проверка границ
+
 	if (value)
 	{
-		decimal->bits[bit] |= (1 << pos); // Устанавливаем бит в 1
+		decimal->bits[bit] |= (1 << pos);
 	}
 	else
 	{
-		decimal->bits[bit] &= ~(1 << pos); // Устанавливаем бит в 0
+		decimal->bits[bit] &= ~(1 << pos);
 	}
 }

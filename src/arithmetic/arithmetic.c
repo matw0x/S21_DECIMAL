@@ -1,27 +1,15 @@
-#include "../s21_decimal.h"
-
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 {
 	int status = ARITHMETIC_OK;
 
-	// Получаем знаки и масштабы чисел
 	int sign_value_1 = get_sign_number(value_1);
 	int sign_value_2 = get_sign_number(value_2);
 
-	int pow_value_1 = is_bits_24_30(value_1);
-	int pow_value_2 = is_bits_24_30(value_2);
+	int pow_value_1 = is_bits_24_30(value1);
+	int pow_value_2 = is_bits_24_30(value2);
 
-	// Нормализуем числа, если их масштабы различаются
-	while (pow_value_1 < pow_value_2)
-	{
-		multiply_by_10(&value_1);
-		pow_value_1++;
-	}
-	while (pow_value_2 < pow_value_1)
-	{
-		multiply_by_10(&value_2);
-		pow_value_2++;
-	}
+	s21_normalization(&value_1, &value_2);
+
 	if (sign_value_1 == sign_value_2)
 	{
 		int buffer = 0;
@@ -51,44 +39,26 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 				}
 			}
 		}
+		if (buffer)
+		{
+			status = ARITHMETIC_OVERFLOW;
+		}
 	}
 	else
 	{
-		// Вычитание для чисел с разными знаками
-		// if (sign_value_1)
-		// {
-		// 	s21_negate(&value_1);
-		// }
-		// else
-		// {
-		// 	s21_negate(&value_2);
-		// }
-		// s21_sub(value_1, value_2, result);
-	}
-
-	return status;
-}
-void multiply_by_10(s21_decimal *decimal)
-{
-	s21_decimal temp = *decimal;
-	for (int i = 0; i < 3; i++)
-	{
-		for (int j = 0; j < 32; j++)
+		if (sign_value_1)
 		{
-			int bit = (temp.bits[i] >> j) & 1;
-			if (bit)
-			{
-				s21_add(*decimal, temp, decimal);
-			}
+			s21_negate(&value_1);
 		}
+		else
+		{
+			s21_negate(&value_2);
+		}
+		s21_sub(value_1, value_2, result);
 	}
-}
-int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
-{
-	int status = ARITHMETIC_OK;
+
 	return status;
 }
-
 int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 {
 }
