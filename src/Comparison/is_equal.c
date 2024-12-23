@@ -1,9 +1,6 @@
 
 #include "../s21_decimal.h"
-typedef struct s21_int256
-{
-	s21_decimal decimals[2];
-} s21_int256;
+
 int s21_is_equal(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;

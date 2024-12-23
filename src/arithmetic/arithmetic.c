@@ -61,48 +61,65 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 	}
 	return status;
 }
+
+// Сравнение чисел не считая знак
+int compare_only_numbers(s21_decimal value_first, s21_decimal value_second)
+{
+	int res = 0;
+	for (int i = 3; i >= 0 && !res; i--)
+	{
+		if (value_first.bits[i] > value_second.bits[i])
+			res = 1;
+		if (value_first.bits[i] < value_second.bits[i])
+			res = -1;
+	}
+	return res;
+}
+
+void s21_basic_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
+{
+	uint64_t borrow = 0;
+	for (int i = 0; i < 4; i++)
+	{
+		uint64_t diff = (uint64_t)value_1.bits[i] - value_2.bits[i] - borrow;
+		result->bits[i] = diff & 0xFFFFFFFF;
+		borrow = (diff >> 32) & 1;
+	}
+}
+
+// Основная функция вычитания
 int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 {
-	int status;
-	int sign_value_1 = get_sign_number(value_1);
-	int sign_value_2 = get_sign_number(value_2);
+	int error = ARITHMETIC_OK;
+	memset(result, 0, sizeof(s21_decimal));
 
-	s21_normalization(&value_1, &value_2);
+	int sign_first = get_sign_number(value_1);
+	int sign_second = get_sign_number(value_2);
 
-	bool is_value_1_greater = s21_is_greater(value_1, value_2);
-	s21_decimal larger = is_value_1_greater ? value_1 : value_2;
-	s21_decimal smaller = is_value_1_greater ? value_2 : value_1;
-
-	if (sign_value_1 == sign_value_2)
+	if (sign_first == sign_second)
 	{
-		set_sign_number(result, is_value_1_greater ? sign_value_1 : !sign_value_1);
-		int buffer = 0;
-		for (int bit = 0; bit < 3; ++bit)
+		int scale;
+		error = s21_normalization(&value_1, &value_2, &scale);
+		if (error != ARITHMETIC_OK)
+			return error;
+
+		if (compare_only_numbers(value_1, value_2) >= 0)
 		{
-			for (int i = 0; i < 32; ++i)
-			{
-				int bit1 = (larger.bits[bit] >> i) & 1;
-				int bit2 = (smaller.bits[bit] >> i) & 1;
-
-				int res_bit = bit1 - bit2 - buffer;
-				if (res_bit < 0)
-				{
-					res_bit += 2;
-					buffer = 1; // -1 из следующего разряда
-				}
-				else
-				{
-					buffer = 0;
-				}
-
-				s21_set_bit(result, bit, i, res_bit);
-			}
+			s21_basic_sub(value_1, value_2, result);
+			set_sign(sign_first, result);
 		}
-		status = ARITHMETIC_OK;
+		else
+		{
+			s21_basic_sub(value_2, value_1, result);
+			set_sign(!sign_first, result);
+		}
+		set_power(result, scale);
 	}
 	else
 	{
-		status = s21_add(value_1, value_2, result);
+		set_sign(0, &value_2);
+		error = s21_add(value_1, value_2, result);
+		set_sign(sign_first, result);
 	}
-	return status;
+	return error;
 }

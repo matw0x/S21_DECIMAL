@@ -11,7 +11,10 @@ typedef struct
 {
 	unsigned int bits[4];
 } s21_decimal;
-
+typedef struct s21_int256
+{
+	s21_decimal decimals[2];
+} s21_int256;
 // ============================================================================
 // Статусы арифметических операций | matw0x
 typedef enum
