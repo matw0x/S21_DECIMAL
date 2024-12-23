@@ -28,25 +28,50 @@ int s21_sign_get(s21_decimal decimal1, int index, int numBits)
 {
 	return (decimal1.bits[numBits] >> index) & 1;
 }
-void s21_normalization(s21_decimal *value1, s21_decimal *value2)
+int s21_normalization(s21_decimal *value1, s21_decimal *value2)
 {
-
 	int pow_value_1 = is_bits_24_30(*value1);
 	int pow_value_2 = is_bits_24_30(*value2);
 
-	while (pow_value_1 < pow_value_2)
+	// Максимальный допустимый масштаб
+	const int MAX_SCALE = 28;
+	bool error = 1;
+	// Нормализуем первое число до масштаба второго
+	while (pow_value_1 < pow_value_2 && error)
 	{
 		if (multiply_by_10(value1) == ARITHMETIC_OVERFLOW)
-			break; // Проверка переполнения
+		{
+			error = 0;
+		}
 		pow_value_1++;
 	}
-	while (pow_value_2 < pow_value_1)
+
+	// Нормализуем второе число до масштаба первого
+	while (pow_value_2 < pow_value_1 && error)
 	{
 		if (multiply_by_10(value2) == ARITHMETIC_OVERFLOW)
-			break; // Проверка переполнения
+		{
+			error = 0;
+		}
 		pow_value_2++;
 	}
+
+	// Проверка, что итоговый масштаб не превышает допустимый
+	if (pow_value_1 > MAX_SCALE || pow_value_2 > MAX_SCALE)
+	{
+
+		error = 0;
+	}
+
+	// Дополнительные проверки на корректность знаков и масштабов
+	unsigned int sign_bit1 = value1->bits[3] & 0x80000000;
+	unsigned int sign_bit2 = value2->bits[3] & 0x80000000;
+	// под вопросом нужна ли эта проверка но я оставлю
+	value1->bits[3] = (value1->bits[3] & 0x7FFFFFFF) | sign_bit1;
+	value2->bits[3] = (value2->bits[3] & 0x7FFFFFFF) | sign_bit2;
+	return error;
 }
+
 int multiply_by_10(s21_decimal *decimal)
 {
 	s21_decimal temp = *decimal;

@@ -1,18 +1,23 @@
 
 #include "../s21_decimal.h"
-#define COMPARISON_FALSE 0
-#define COMPARISON_TRUE 1
+typedef struct s21_int256
+{
+	s21_decimal decimals[2];
+} s21_int256;
 int s21_is_equal(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;
-	if (get_sign_number(decimal1) == get_sign_number(decimal2))
+
+	s21_normalization(&decimal1, &decimal2);
+	if (decimal1.bits[0] == 0 && decimal1.bits[1] == 0 && decimal1.bits[2] == 0 && decimal2.bits[0] == 0 && decimal2.bits[1] == 0 && decimal2.bits[2] == 0)
 	{
-		if (get_bits_16_23(decimal1) == get_bits_16_23(decimal2))
+		res = COMPARISON_TRUE;
+	}
+	else
+	{
+		if (decimal1.bits[0] == decimal2.bits[0] && decimal1.bits[1] == decimal2.bits[1] && decimal1.bits[2] == decimal2.bits[2] && decimal1.bits[3] == decimal2.bits[3])
 		{
-			if (decimal1.bits[0] == decimal2.bits[0] && decimal1.bits[1] == decimal2.bits[1] && decimal1.bits[2] == decimal2.bits[2])
-			{
-				res = COMPARISON_TRUE;
-			}
+			res = COMPARISON_TRUE;
 		}
 	}
 	return res;
@@ -31,69 +36,108 @@ int s21_is_not_equal(s21_decimal decimal1, s21_decimal decimal2)
 	return res;
 }
 
-int s21_is_greater(s21_decimal decimal1, s21_decimal decimal2)
+int s21_is_greater(s21_decimal value_1, s21_decimal value_2)
 {
-	COMPARISON_STATUS res = COMPARISON_FALSE;
+	int result = COMPARISON_FALSE;
 
-	if (get_sign_number(decimal1) < get_sign_number(decimal2))
+	// Проверка на случай равенства нулей
+	if (value_1.bits[0] == 0 && value_1.bits[1] == 0 && value_1.bits[2] == 0 && value_2.bits[0] == 0 && value_2.bits[1] == 0 && value_2.bits[2] == 0)
 	{
-		res = COMPARISON_TRUE;
-	}
-	else if (get_sign_number(decimal1) > get_sign_number(decimal2))
-	{
-		res = COMPARISON_FALSE;
-	}
-	else if (get_bits_16_23(decimal1) != get_bits_16_23(decimal2))
-	{
-		res = get_bits_16_23(decimal1) > get_bits_16_23(decimal2) ? COMPARISON_TRUE : COMPARISON_FALSE;
+		result = COMPARISON_FALSE; // 0 не больше -0
 	}
 	else
 	{
-		bool flag = COMPARISON_TRUE;
-		for (int i = 2; i >= 0 && flag; --i)
+		int sign1 = s21_decimal_get_sign(value_1);
+		int sign2 = s21_decimal_get_sign(value_2);
+
+		if (sign1 == 1 && sign2 == 0)
 		{
-			if (decimal1.bits[i] > decimal2.bits[i])
-			{
-				res = COMPARISON_TRUE;
-				flag = COMPARISON_FALSE;
-			}
-			else if (decimal1.bits[i] < decimal2.bits[i])
-			{
-				res = COMPARISON_FALSE;
-				flag = COMPARISON_FALSE;
-			}
+			// Положительное число всегда больше отрицательного
+			result = COMPARISON_TRUE;
+		}
+		else if (sign1 == 0 && sign2 == 1)
+		{
+			// Отрицательное число всегда меньше положительного
+			result = COMPARISON_FALSE;
+		}
+		else if (sign1 == 0 && sign2 == 0)
+		{
+			// Для двух отрицательных чисел выполняем сравнение по модулю
+			result = s21_is_less_handle(s21_abs(value_2), s21_abs(value_1));
+		}
+		else
+		{
+			// Для положительных чисел сравниваем их значения
+			result = s21_is_greater_handle(value_1, value_2);
 		}
 	}
-	return res;
+
+	return result;
+}
+
+int s21_is_greater_handle(s21_decimal value_1, s21_decimal value_2)
+{
+	int result = COMPARISON_FALSE;
+
+	// Нормализация чисел (выравнивание степеней)
+	s21_normalization(&value_1, &value_2);
+	bool success = 1;
+	// Сравнение чисел побитово, начиная с более значимых битов
+	for (int bit = 2; bit >= 0 && success; --bit)
+	{ // Начинаем с младшего разряда
+		if (value_1.bits[bit] > value_2.bits[bit])
+		{
+			result = COMPARISON_TRUE;
+			success = 0;
+		}
+		else if (value_1.bits[bit] < value_2.bits[bit])
+		{
+			result = COMPARISON_FALSE;
+			success = 0;
+		}
+	}
+	return result;
 }
 
 int s21_is_greater_or_equal(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;
+
+	// Проверка условия: числа равны или первое больше второго
 	if (s21_is_equal(decimal1, decimal2) || s21_is_greater(decimal1, decimal2))
 	{
 		res = COMPARISON_TRUE;
 	}
+
 	return res;
 }
+
 int s21_is_less(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;
+
+	// Проверка условия: первое число не больше или равно второму
 	if (!s21_is_greater_or_equal(decimal1, decimal2))
 	{
 		res = COMPARISON_TRUE;
 	}
+
 	return res;
 }
+
 int s21_is_less_or_equal(s21_decimal decimal1, s21_decimal decimal2)
 {
 	COMPARISON_STATUS res = COMPARISON_FALSE;
+
+	// Проверка условия: первое число не больше второго
 	if (!s21_is_greater(decimal1, decimal2))
 	{
 		res = COMPARISON_TRUE;
 	}
+
 	return res;
 }
+
 // int main()
 // {
 // 	// Примеры чисел для тестов
