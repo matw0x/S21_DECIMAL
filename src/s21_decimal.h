@@ -1,6 +1,5 @@
 #ifndef S21_DECIMAL_H
 #define S21_DECIMAL_H
-
 #include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -52,7 +51,7 @@ int s21_is_not_equal(s21_decimal decimal1, s21_decimal decimal2);
 typedef enum
 {
 	CONVERSION_OK,
-	CONVERSION_ERROR // ошибка конвертации
+	CONVERSION_ERROR
 } CONVERSION_STATUS;
 
 // Функции конверсии
@@ -89,4 +88,16 @@ int is_valid_decimal(const s21_decimal value);
 int get_sign_number(s21_decimal decimal);
 int get_bits_16_23(s21_decimal decimal);
 int s21_sign_get(s21_decimal decimal1, int index, int numBits);
+int s21_normalization(s21_decimal *value1, s21_decimal *value2);
+int multiply_by_10(s21_decimal *decimal);
+void s21_set_bit(s21_decimal *decimal, int bit, int pos, int value);
+
+// ============================================================================
+// Новые вспомогательные функции | Дополнения
+int div_mod_ten(s21_decimal *decimal, int flag);
+int bank_round(s21_decimal *dec, int sign, int pow);
+int b_round(s21_decimal *decimal, unsigned int remainder);
+void set_power(s21_decimal *decimal, int pow);
+void set_sign(int sign, s21_decimal *decimal);
+
 #endif // S21_DECIMAL_H
