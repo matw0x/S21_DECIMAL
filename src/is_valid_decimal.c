@@ -1,4 +1,4 @@
-#include "../s21_decimal.h"
+#include "s21_decimal.h"
 #define OPERATION_OK 1
 #define OPERATION_ERROR 0
 int is_empty(const s21_decimal value)

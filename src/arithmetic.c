@@ -1,37 +1,80 @@
-#include "../s21_decimal.h"
+#include "s21_decimal.h"
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 {
-	if (!result)
-	{
-		return OPERATION_ERROR; // Проверка на NULL
-	}
-	memset(result, 0, sizeof(s21_decimal));
+    if (!result)
+    {
+        return 1; // Ошибка: NULL указатель
+    }
 
-	int status = s21_normalization(&value_1, &value_2);
-	if (status != OPERATION_OK)
-	{
-		return status;
-	}
+    memset(result, 0, sizeof(s21_decimal));
 
-	int carry = 0;
-	for (int i = 0; i < 3; ++i)
-	{
-		uint64_t temp = (uint64_t)value_1.bits[i] + value_2.bits[i] + carry;
-		result->bits[i] = (uint32_t)temp;
-		carry = (temp >> 32) & 1;
-	}
+    // Уравнивание масштабов через сдвиг
+    int scale1 = get_power(&value_1);
+    int scale2 = get_power(&value_2);
 
-	if (carry)
-	{
-		return ARITHMETIC_OVERFLOW;
-	}
+    while (scale1 < scale2)
+    {
+        if (shift_decimal__left(&value_1, 1) != 0)
+        {
+            return 1; // Ошибка: переполнение при сдвиге
+        }
+        scale1++;
+    }
 
-	set_power(result, get_power(&value_1));
-	set_sign(get_sign(&value_1), result);
+    while (scale2 < scale1)
+    {
+        if (shift_decimal__left(&value_2, 1) != 0)
+        {
+            return 1; // Ошибка: переполнение при сдвиге
+        }
+        scale2++;
+    }
 
-	return OPERATION_OK;
+    set_power(&value_1, scale1);
+    set_power(&value_2, scale2);
+
+    // Если знаки различаются, выполняем вычитание
+    if (get_sign(&value_1) != get_sign(&value_2))
+    {
+        if (get_sign(&value_2))
+        {
+            set_sign(0, &value_2);
+            return s21_sub(value_1, value_2, result);
+        }
+        else
+        {
+            set_sign(0, &value_1);
+            return s21_sub(value_2, value_1, result);
+        }
+    }
+
+    // Выполняем сложение мантисс
+    int carry = 0;
+    for (int i = 0; i < 3; ++i)
+    {
+        uint64_t temp = (uint64_t)value_1.bits[i] + value_2.bits[i] + carry;
+        result->bits[i] = (uint32_t)temp;
+        carry = (temp >> 32) & 1; // Учитываем перенос
+    }
+
+    // Обработка переполнения мантиссы
+    if (carry)
+    {
+        // Банковское округление
+        if (s21_round_mantissa(result) != 0)
+        {
+            return 1; // Ошибка: переполнение
+        }
+    }
+
+    // Установка знака и масштаба
+    set_power(result, get_power(&value_1));
+    set_sign(get_sign(&value_1), result);
+
+    return 0; // ОК
 }
+
 // Сравнение чисел не считая знак
 int compare_only_numbers(s21_decimal value_first, s21_decimal value_second)
 {
@@ -98,40 +141,50 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 
 int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 {
-	if (!result)
-	{
-		return OPERATION_ERROR; // Проверка на NULL
-	}
 	memset(result, 0, sizeof(s21_decimal));
 
+	s21_decimal temp_result = {{0, 0, 0, 0}};
 	for (int i = 0; i < 96; i++)
 	{
 		if (s21_get_bit(&value_2, i))
 		{
 			s21_decimal temp = value_1;
-			if (shift_decimal__left(&temp, i) != OPERATION_OK || s21_add(*result, temp, result) != OPERATION_OK)
+
+			// Сдвиг влево
+			if (shift_decimal__left(&temp, i) != 0)
 			{
-				return ARITHMETIC_OVERFLOW;
+				
+				return 1; // Ошибка: переполнение
+			}
+
+			// Сложение промежуточного результата
+			if (s21_add(temp_result, temp, &temp_result) != 0)
+			{
+				
+				return 1; // Ошибка: переполнение
 			}
 		}
 	}
 
+	*result = temp_result;
+
+	// Устанавливаем знак результата
 	int final_sign = get_sign(&value_1) ^ get_sign(&value_2);
 	set_sign(final_sign, result);
 
-	return OPERATION_OK;
+	return 0; // OK
 }
+
 int shift_decimal__left(s21_decimal *value, int shift)
 {
-	int status = ARITHMETIC_OK;
 	if (shift < 0 || shift > 96)
 	{
-		return ARITHMETIC_OVERFLOW;
+		return 1; // Ошибка: переполнение
 	}
 
 	while (shift > 0)
 	{
-		int step = shift > 31 ? 31 : shift; // Максимальный сдвиг за раз
+		int step = shift > 31 ? 31 : shift;
 		unsigned int carry = 0;
 
 		for (int i = 0; i < 3; i++)
@@ -140,14 +193,16 @@ int shift_decimal__left(s21_decimal *value, int shift)
 			value->bits[i] = (value->bits[i] << step) | carry;
 			carry = new_carry;
 		}
-		if (carry != 0) // Если есть остаток, значит, переполнение
-		{
-			status = ARITHMETIC_OVERFLOW;
-			break;
+
+		if (carry != 0)
+		{				 // Если перенос выходит за 96 бит
+			return 1; // Ошибка: переполнение
 		}
+
 		shift -= step;
 	}
-	return status;
+
+	return 0; // OK
 }
 int shift_decimal__right(s21_decimal *value, int shift)
 {
@@ -206,7 +261,7 @@ int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 	for (int i = shift_count; i >= 0; --i)
 	{
 		shift_decimal__right(&temp, 1);
-		if (!is_less(remainder, temp))
+		if (!s21_is_less(remainder, temp))
 		{
 			s21_sub(remainder, temp, &remainder);
 			s21_set_bit(&quotient, i / 32, i % 32, 1);
@@ -222,7 +277,7 @@ int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 		while (power < 28 && !is_zero(remainder))
 		{
 			multiply_by_10(&remainder);
-			if (!is_less(remainder, value_2))
+			if (!s21_is_less(remainder, value_2))
 			{
 				s21_sub(remainder, value_2, &remainder);
 				s21_set_bit(result, (power + 96) / 32, (power + 96) % 32, 1);
@@ -255,10 +310,8 @@ int is_zero(s21_decimal dec)
 	}
 	return 1;
 }
-void set_power(s21_decimal *dec, int power)
+int will_overflow(s21_decimal decimal, int multiplier)
 {
-	for (int i = 16; i <= 23; i++)
-	{
-		set_bit(power >> (i - 16) & 1, dec, i + 96);
-	}
+	s21_decimal result = {{0, 0, 0, 0}};
+	return (s21_mul(decimal, (s21_decimal){{multiplier, 0, 0, 0}}, &result) != ARITHMETIC_OK);
 }

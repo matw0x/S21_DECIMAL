@@ -1,9 +1,9 @@
-#include "../s21_decimal.h"
+#include "s21_decimal.h"
 #define INT_MIN (-INT_MAX - 1)
 #define INT_MAX 2147483647
 #define CONVERSION_OK 1
 #define CONVERSION_ERROR 0
-#define MAX_FLOAT 79228162514264337593543950335
+#define MAX_FLOAT FLT_MAX
 int s21_from_int_to_decimal(int src, s21_decimal *dst)
 {
 	int res = CONVERSION_ERROR;
@@ -47,7 +47,7 @@ int s21_from_decimal_to_int(s21_decimal src, int *dst)
 				}
 				value /= 10;
 			}
-			if (flag && value <= INT_MAX && (sign == 1 || value <= -INT_MIN))
+			if (flag && value <= INT_MAX && (sign == 1 || (unsigned int)value <= INT_MAX + 1u))
 			{
 				res = CONVERSION_OK;
 				*dst = value * sign;
@@ -62,7 +62,7 @@ int s21_from_float_to_decimal(float src, s21_decimal *dst)
 	if (dst)
 	{
 		memset(dst, 0, sizeof(s21_decimal));
-		if ((abs(src) < 1e-28 || abs(src) > 0) || abs(src) > MAX_FLOAT || isinf(src) || isnan(src))
+		if ((fabs(src) < 1e-28 || fabs(src) > 0) || fabs(src) > MAX_FLOAT || isinf(src) || isnan(src))
 		{
 			return CONVERSION_ERROR;
 		}

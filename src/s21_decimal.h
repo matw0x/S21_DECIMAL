@@ -14,6 +14,16 @@ typedef struct s21_int256
 {
 	s21_decimal decimals[2];
 } s21_int256;
+
+// Ошибки
+#define S21_OK 0
+#define S21_INFINITY 1
+#define S21_NEG_INFINITY 2
+#define S21_DIV_BY_ZERO 3
+#define S21_FALSE 0
+#define S21_TRUE 1
+#define S21_CONV_ERR 1
+#define S21_CALC_ERR 1
 // ============================================================================
 // Статусы арифметических операций | matw0x
 typedef enum
@@ -95,9 +105,19 @@ void s21_set_bit(s21_decimal *decimal, int bit, int pos, int value);
 // ============================================================================
 // Новые вспомогательные функции | Дополнения
 int div_mod_ten(s21_decimal *decimal, int flag);
-int bank_round(s21_decimal *dec, int sign, int pow);
-int b_round(s21_decimal *decimal, unsigned int remainder);
 void set_power(s21_decimal *decimal, int pow);
 void set_sign(int sign, s21_decimal *decimal);
-
+s21_decimal s21_abs(s21_decimal value);
+int s21_is_less_handle(s21_decimal value_1, s21_decimal value_2);
+int s21_is_greater_handle(s21_decimal value_1, s21_decimal value_2);
+int get_power(const s21_decimal *value);
+int get_sign(const s21_decimal *value);
+int shift_decimal__left(s21_decimal *value, int shift);
+int is_zero(s21_decimal dec);
+int s21_get_bit(const s21_decimal *decimal, int position);
+int div_by_10(s21_decimal *decimal);
+int will_overflow(s21_decimal decimal, int multiplier);
+int compare_only_numbers(s21_decimal value1, s21_decimal value2);
+int div_by_10_manual(s21_decimal *decimal);
+int s21_round_mantissa(s21_decimal *value);
 #endif // S21_DECIMAL_H
