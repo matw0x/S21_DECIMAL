@@ -4,10 +4,10 @@ int main(void)
 {
 	int failed = 0;
 	Suite *suite_s21_decimal = suite_create("s21_decimal.h");
-	// suite_add_tcase(suite_s21_decimal, s21_test_add());
-	// suite_add_tcase(suite_s21_decimal, s21_test_sub());
-	// suite_add_tcase(suite_s21_decimal, s21_test_mul());
-	// suite_add_tcase(suite_s21_decimal, s21_test_div());
+	suite_add_tcase(suite_s21_decimal, s21_test_add());
+	suite_add_tcase(suite_s21_decimal, s21_test_sub());
+	suite_add_tcase(suite_s21_decimal, s21_test_mul());
+	suite_add_tcase(suite_s21_decimal, s21_test_div());
 
 	suite_add_tcase(suite_s21_decimal, s21_test_is_equal());
 	suite_add_tcase(suite_s21_decimal, s21_test_is_greater_or_equal());

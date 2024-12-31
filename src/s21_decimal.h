@@ -10,7 +10,7 @@ typedef struct
 {
 	unsigned int bits[4];
 } s21_decimal;
-typedef struct s21_int256
+typedef struct 
 {
 	s21_decimal decimals[2];
 } s21_int256;
@@ -110,7 +110,7 @@ void set_sign(int sign, s21_decimal *decimal);
 s21_decimal s21_abs(s21_decimal value);
 int s21_is_less_handle(s21_decimal value_1, s21_decimal value_2);
 int s21_is_greater_handle(s21_decimal value_1, s21_decimal value_2);
-int get_power(const s21_decimal *value);
+int get_power(s21_decimal *value);
 int get_sign(const s21_decimal *value);
 int shift_decimal__left(s21_decimal *value, int shift);
 int is_zero(s21_decimal dec);

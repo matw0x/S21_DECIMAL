@@ -2,7 +2,7 @@
 
 int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 {
-    if (!result)
+    if (!s21_normalization(&value_1,&value_2))
     {
         return 1; // Ошибка: NULL указатель
     }
@@ -48,7 +48,6 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
             return s21_sub(value_2, value_1, result);
         }
     }
-
     // Выполняем сложение мантисс
     int carry = 0;
     for (int i = 0; i < 3; ++i)
@@ -57,21 +56,18 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
         result->bits[i] = (uint32_t)temp;
         carry = (temp >> 32) & 1; // Учитываем перенос
     }
-
+		set_power(result, get_power(&value_1));
+		set_sign(get_sign(&value_1), result);
     // Обработка переполнения мантиссы
     if (carry)
     {
+			
         // Банковское округление
-        if (s21_round_mantissa(result) != 0)
-        {
-            return 1; // Ошибка: переполнение
-        }
+			if (s21_round_mantissa(result) != 0)
+			{
+					return 1; // Ошибка: переполнение
+			}
     }
-
-    // Установка знака и масштаба
-    set_power(result, get_power(&value_1));
-    set_sign(get_sign(&value_1), result);
-
     return 0; // ОК
 }
 

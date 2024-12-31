@@ -122,23 +122,49 @@ int s21_normalization(s21_decimal *value1, s21_decimal *value2)
 }
 
 // Умножение числа на 10
-int multiply_by_10(s21_decimal *decimal)
-{
-	s21_decimal ten = {{10, 0, 0, 0}};
-	s21_decimal result = {{0, 0, 0, 0}};
+int multiply_by_10(s21_decimal *decimal) {
+    // Работаем с 96-битным целым числом
+    uint32_t part0 = decimal->bits[0]; // Младшая часть
+    uint32_t part1 = decimal->bits[1]; // Средняя часть
+    uint32_t part2 = decimal->bits[2]; // Старшая часть
 
-	// Выполняем умножение
+    uint64_t carry = 0; // Перенос для умножения
+    uint64_t temp;
 
-	if (s21_mul(*decimal, ten, &result) != ARITHMETIC_OK)
-	{
-	
-		return ARITHMETIC_OVERFLOW;
-	}
-	
-	// Если нет переполнения, обновляем исходное значение
-	*decimal = result;
-	return ARITHMETIC_OK;
+    // Умножение младшей части на 10
+    temp = (uint64_t)part0 * 10 + carry;
+    carry = temp >> 32;
+    decimal->bits[0] = (uint32_t)(temp & 0xFFFFFFFF);
+
+    // Умножение средней части на 10
+    temp = (uint64_t)part1 * 10 + carry;
+    carry = temp >> 32;
+    decimal->bits[1] = (uint32_t)(temp & 0xFFFFFFFF);
+
+    // Умножение старшей части на 10
+    temp = (uint64_t)part2 * 10 + carry;
+    carry = temp >> 32;
+    decimal->bits[2] = (uint32_t)(temp & 0xFFFFFFFF);
+
+    // Если есть перенос после старшей части, то переполнение
+    if (carry > 0) {
+        return ARITHMETIC_OVERFLOW;
+    }
+
+    // Работаем с коэффициентом масштабирования
+    int scale = get_power(decimal); // Извлекаем степень
+    if (scale < 28) {
+        scale += 1;
+        decimal->bits[3] = (decimal->bits[3] & 0xFF00FFFF) | (scale << 16);
+    } else {
+        // Если степень слишком велика, проверяем, можно ли округлить
+        return ARITHMETIC_OVERFLOW;
+    }
+
+    return ARITHMETIC_OK;
 }
+
+
 // деление числа на 10
 int div_by_10(s21_decimal *decimal)
 {
@@ -195,7 +221,7 @@ void set_power(s21_decimal *value, int scale)
 }
 
 // Получение масштаба числа
-int get_power(const s21_decimal *value)
+int get_power(s21_decimal *value)
 {
 	return (value->bits[3] >> 16) & 0xFF;
 }
@@ -263,12 +289,9 @@ int div_by_10_manual(s21_decimal *decimal)
 	return OPERATION_OK;
 }
 int s21_round_mantissa(s21_decimal *value) {
-    if (!value) {
-        return 1; // Ошибка: NULL указатель
-    }
-
     int scale = get_power(value);
     if (scale == 0) {
+			printf("\nMISTAKE\n");
         return 1; // Ошибка: невозможность округления
     }
 
@@ -277,40 +300,13 @@ int s21_round_mantissa(s21_decimal *value) {
     set_power(value, scale);
 
     // Округляем мантиссу
-    uint64_t remainder = value->bits[0] % 10;
-    uint64_t quotient = value->bits[0] / 10;
+    int remainder = value->bits[0] % 10;
+    int quotient = value->bits[0] / 10;
 
     if (remainder > 5 || (remainder == 5 && (quotient & 1) == 1)) {
         quotient++; // Округляем вверх
     }
 
-    value->bits[0] = (uint32_t)quotient;
+    value->bits[0] = (int)quotient;
     return 0; // ОК
 }
-// int main()
-// {
-// 	s21_decimal value_1 = {{12300, 0, 0, (2 << 16)}};
-// 	s21_decimal value_2 = {{123000, 0, 0, (3 << 16)}};
-// 	printf("\nSTART\n%08X %08X %08X %08X\n", value_1.bits[0], value_1.bits[1], value_1.bits[2], value_1.bits[3]);
-// 	printf("\n%08X %08X %08X %08X\n", value_2.bits[0], value_2.bits[1], value_2.bits[2], value_2.bits[3]);
-// 	printf("%d",s21_normalization(&value_1, &value_2));
-// 	printf("\nFINISH\n%08X %08X %08X %08X\n", value_1.bits[0], value_1.bits[1], value_1.bits[2], value_1.bits[3]);
-// 	printf("%08X %08X %08X %08X\n", value_2.bits[0], value_2.bits[1], value_2.bits[2], value_2.bits[3]);
-// 	printf("\n%d\n",s21_is_equal(value_1, value_2));
-// 	return 0;
-	
-// }
-// int main() {
-//     s21_decimal a = {{123456789, 0, 0, 2<<16}};
-//     s21_decimal b = {{987654321, 0, 0, 3<<16}};
-//     s21_decimal result;
-
-//     if (s21_add(a, b, &result) == 0) {
-//         printf("Addition Result: %08X %08X %08X %08X\n",
-//                result.bits[0], result.bits[1], result.bits[2], result.bits[3]);
-//     } else {
-//         printf("Error: Overflow or Invalid Input\n");
-//     }
-
-//     return 0;
-// }
