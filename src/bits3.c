@@ -110,7 +110,7 @@ int s21_normalization(s21_decimal *value1, s21_decimal *value2)
 
 	while (scale2 > scale1)
 	{
-
+		
 		div_by_10_manual(value2);
 		scale2--;
 	}
@@ -148,6 +148,7 @@ int multiply_by_10(s21_decimal *decimal) {
 
     // Если есть перенос после старшей части, то переполнение
     if (carry > 0) {
+			
         return ARITHMETIC_OVERFLOW;
     }
 
@@ -254,44 +255,43 @@ int s21_get_bit(const s21_decimal *decimal, int position)
 	int bit_position = position % 32;
 	return (decimal->bits[bit_index] >> bit_position) & 1;
 }
-int div_by_10_manual(s21_decimal *decimal)
-{
-	s21_decimal result = {{0, 0, 0, 0}};
-	s21_decimal remainder = {{0, 0, 0, 0}};
-	s21_decimal ten = {{10, 0, 0, 0}};
+int s21_div_by_10(s21_decimal *decimal) {
+    s21_decimal result = {{0, 0, 0, 0}};
+    s21_decimal remainder = {{0, 0, 0, 0}};
+    s21_decimal ten = {{10, 0, 0, 0}};
+    int scale = (decimal->bits[3] >> 16) & 0xFF; // Получаем масштаб
 
-	for (int i = 127; i >= 0; i--)
-	{
-		// Сдвигаем остаток влево
-		shift_decimal__left(&remainder, 1);
+    for (int i = 95; i >= 0; i--) {
+        // Сдвигаем остаток влево
+        s21_shift(&remainder);
 
-		// Добавляем текущий бит
-		if (s21_get_bit(decimal, i))
-		{
-			remainder.bits[0] |= 1;
-		}
+        // Добавляем текущий бит
+        if (s21_get_bit(decimal, i)) {
+            s21_set_bit(&remainder, 0, 0,1);
+        }
 
-		// Если остаток больше или равен 10, вычитаем 10
-		if (compare_only_numbers(remainder, ten) >= 0)
-		{
-			s21_sub(remainder, ten, &remainder);
-			result.bits[0] |= 1;
-		}
+        // Если остаток больше или равен 10, вычитаем 10
+        if (compare_only_numbers(remainder, ten) >= 0) {
+            s21_sub(remainder, ten, &remainder);
+            set_bit(&result, i, 1);
+        }
+    }
 
-		// Сдвигаем результат влево
-		if (i != 0)
-		{
-			shift_decimal__left(&result, 1);
-		}
-	}
+    // Копируем результат
+    *decimal = result;
 
-	*decimal = result;
-	return OPERATION_OK;
+    // Уменьшаем масштаб, если он есть
+    if (scale > 0) {
+        decimal->bits[3] &= ~(0xFF << 16); // Сбрасываем старый масштаб
+        decimal->bits[3] |= ((scale - 1) << 16); // Устанавливаем новый масштаб
+    }
+
+    return 0;
 }
+
 int s21_round_mantissa(s21_decimal *value) {
     int scale = get_power(value);
     if (scale == 0) {
-			printf("\nMISTAKE\n");
         return 1; // Ошибка: невозможность округления
     }
 
@@ -309,4 +309,29 @@ int s21_round_mantissa(s21_decimal *value) {
 
     value->bits[0] = (int)quotient;
     return 0; // ОК
+}
+// void print_decimal(s21_decimal *dec) {
+//     printf("%08X %08X %08X %08X scale:%d\n", dec->bits[3], dec->bits[2], dec->bits[1], dec->bits[0],get_power(dec));
+// }
+
+int main()
+{
+	s21_decimal value_1 = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFF155, (3 << 16)}};
+	s21_decimal value_2 = {{0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFF333, (26 << 16)}};
+	s21_decimal value_result = {{0}};
+	s21_decimal value_expected = {{0x000C16D8, 0, 0xFFFFF156, 3 << 16}};
+printf("\n%08X %08X %08X scale:%d\n", value_1.bits[0], value_1.bits[1], value_1.bits[2],get_power(&value_1));
+printf("\n%08X %08X %08X scale:%d\n", value_2.bits[0], value_2.bits[1], value_2.bits[2],get_power(&value_2));
+
+	printf("\n%d\n",s21_normalization(&value_1,&value_2));
+ printf("\n%08X %08X %08X scale:%d\n", value_1.bits[0], value_1.bits[1], value_1.bits[2],get_power(&value_1));
+printf("\n%08X %08X %08X scale:%d\n", value_2.bits[0], value_2.bits[1], value_2.bits[2],get_power(&value_2));
+	s21_add(value_1, value_2, &value_result);
+printf("\n%08X %08X %08X scale:%d\n", value_result.bits[0],value_result.bits[1], value_result.bits[2],get_power(&value_result));
+	if(s21_is_equal(value_result, value_expected)){
+		printf("OK");
+	}
+
+	return 0;
+	
 }

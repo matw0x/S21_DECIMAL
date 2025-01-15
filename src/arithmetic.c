@@ -15,7 +15,7 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 
     while (scale1 < scale2)
     {
-        if (shift_decimal__left(&value_1, 1) != 0)
+        if (multiply_by_10(&value_1)!=ARITHMETIC_OK)
         {
             return 1; // Ошибка: переполнение при сдвиге
         }
@@ -24,7 +24,7 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 
     while (scale2 < scale1)
     {
-        if (shift_decimal__left(&value_2, 1) != 0)
+        if (multiply_by_10(&value_2)!=ARITHMETIC_OK)
         {
             return 1; // Ошибка: переполнение при сдвиге
         }
@@ -61,7 +61,6 @@ int s21_add(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
     // Обработка переполнения мантиссы
     if (carry)
     {
-			
         // Банковское округление
 			if (s21_round_mantissa(result) != 0)
 			{
@@ -135,71 +134,90 @@ int s21_sub(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 	return OPERATION_OK;
 }
 
-int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
-{
-	memset(result, 0, sizeof(s21_decimal));
+int shift_decimal__left(s21_decimal *value, int shift) {
+    if (shift < 0 || shift > 96) {
+        return 1; // Ошибка: некорректный shift
+    }
+	
+    while (shift > 0) {
+			
+        int step = (shift > 31) ? 31 : shift; // Максимальный шаг — 31 бит
+        unsigned int carry = 0;
 
-	s21_decimal temp_result = {{0, 0, 0, 0}};
-	for (int i = 0; i < 96; i++)
-	{
-		if (s21_get_bit(&value_2, i))
-		{
-			s21_decimal temp = value_1;
+        for (int i = 0; i < 3; i++) {
+            unsigned int new_carry = (value->bits[i] >> (32 - step)) & ((1U << step) - 1);
+            value->bits[i] = (value->bits[i] << step) | carry;
+            carry = new_carry;
+        }
 
-			// Сдвиг влево
-			if (shift_decimal__left(&temp, i) != 0)
-			{
-				
-				return 1; // Ошибка: переполнение
-			}
+        if (carry != 0) {
+            
+							s21_round_mantissa(value);
+						
+        }
 
-			// Сложение промежуточного результата
-			if (s21_add(temp_result, temp, &temp_result) != 0)
-			{
-				
-				return 1; // Ошибка: переполнение
-			}
-		}
-	}
+        shift -= step; // Уменьшаем количество оставшихся бит для сдвига
+    }
 
-	*result = temp_result;
-
-	// Устанавливаем знак результата
-	int final_sign = get_sign(&value_1) ^ get_sign(&value_2);
-	set_sign(final_sign, result);
-
-	return 0; // OK
+    return 0; // OK
 }
 
-int shift_decimal__left(s21_decimal *value, int shift)
-{
-	if (shift < 0 || shift > 96)
-	{
-		return 1; // Ошибка: переполнение
-	}
+int s21_mul(s21_decimal value_1, s21_decimal value_2, s21_decimal *result) {
+    int bit_1;
+    int sign_1 = get_sign(&value_1);
+    int sign_2 = get_sign(&value_2);
+    s21_decimal adder = value_1;
+    int exp1 = get_power(&value_1);
+    int exp2 = get_power(&value_2);
+    int error = 0;
 
-	while (shift > 0)
-	{
-		int step = shift > 31 ? 31 : shift;
-		unsigned int carry = 0;
+    // Установка итогового масштаба
+    set_power(result, exp1 + exp2);
 
-		for (int i = 0; i < 3; i++)
-		{
-			unsigned int new_carry = (value->bits[i] >> (32 - step)) & ((1U << step) - 1);
-			value->bits[i] = (value->bits[i] << step) | carry;
-			carry = new_carry;
-		}
+    // Удаление знаков у промежуточных чисел
+    set_sign(0, &adder);
+    set_sign(0, &value_2);
 
-		if (carry != 0)
-		{				 // Если перенос выходит за 96 бит
-			return 1; // Ошибка: переполнение
-		}
+    // Инициализация временной переменной для результата
+    s21_decimal temp_result = {0};
 
-		shift -= step;
-	}
+    // Основной цикл умножения
+    for (int i = 0; i < 96; i++) {
+        bit_1 = s21_get_bit(&value_2, i);
+        if (bit_1) {
+            if (s21_add(temp_result, adder, &temp_result) != 0) {
+                return 1; // Переполнение при сложении
+            }
+        }
 
-	return 0; // OK
+        error = shift_decimal__left(&adder, 1);
+        if (error) {
+            if (s21_round_mantissa(&adder)) {
+                return 1; // Переполнение при округлении
+            }
+            s21_add(temp_result, adder, &temp_result); // Последняя корректировка
+            break; // Завершаем обработку при переполнении
+        }
+    }
+
+    // Переносим результат
+    *result = temp_result;
+
+    // Установка знака результата
+    set_sign(sign_1 != sign_2, result);
+
+    return 0; // Успех
 }
+
+void s21_invert_mantisa(s21_decimal *value) {
+    for (int j = 0; j < 3; j++) {
+        for (int i = 0; i < 32; i++) {
+            int bit = s21_get_bit(value, j * 32 + i);
+            s21_set_bit(value, j, i, !bit);
+        }
+    }
+}
+
 int shift_decimal__right(s21_decimal *value, int shift)
 {
 	int status = ARITHMETIC_OK;
@@ -223,6 +241,7 @@ int shift_decimal__right(s21_decimal *value, int shift)
 	}
 	return status;
 }
+
 int s21_div(s21_decimal value_1, s21_decimal value_2, s21_decimal *result)
 {
 	int status = ARITHMETIC_OK;

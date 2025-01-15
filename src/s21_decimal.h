@@ -120,4 +120,8 @@ int will_overflow(s21_decimal decimal, int multiplier);
 int compare_only_numbers(s21_decimal value1, s21_decimal value2);
 int div_by_10_manual(s21_decimal *decimal);
 int s21_round_mantissa(s21_decimal *value);
+int s21_shift(s21_decimal *number);
+int s21_addiction_logic(s21_decimal value_1, s21_decimal value_2, s21_decimal *result);
+//void print_decimal(s21_decimal *dec)
+void s21_invert_mantisa(s21_decimal *value);
 #endif // S21_DECIMAL_H
